@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kanban Board</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+  <div class="container mx-auto py-8">
+    <h1 class="text-3xl font-bold text-center mb-6">Kanban Board</h1>
+
+    <div id="board" class="flex space-x-6 mt-6">
+      <!-- Dynamically generated columns will be added here -->
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', async function () {
+      const token = localStorage.getItem('authToken');
+
+      if (!token) {
+        // Redirect to login if no token found
+        window.location.href = 'login.html';
+      } else {
+        try {
+          const response = await fetch('http://localhost:5000/api/board', {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-auth-token': token  // Send the token in the header
+            }
+          });
+
+          const boardData = await response.json();
+
+          if (response.ok) {
+            // Render the board with columns and cards here
+            const boardContainer = document.getElementById('board');
+            boardData.columns.forEach(column => {
+              const columnElement = document.createElement('div');
+              columnElement.className = 'w-1/4 p-4 bg-white rounded shadow-lg';
+              columnElement.innerHTML = `<h3 class="text-xl font-bold">${column.name}</h3>`;
+
+              // Create a list of cards inside the column
+              const cardList = document.createElement('ul');
+              column.cards.forEach(card => {
+                const cardItem = document.createElement('li');
+                cardItem.className = 'p-2 mt-2 bg-gray-100 rounded';
+                cardItem.innerText = card.title;  // You can show more details here
+                cardList.appendChild(cardItem);
+              });
+
+              columnElement.appendChild(cardList);
+              boardContainer.appendChild(columnElement);
+            });
+          } else {
+            console.error('Failed to fetch board:', boardData.message);
+          }
+        } catch (error) {
+          console.error('Error:', error);
+        }
+      }
+    });
+  </script>
+</body>
+</html>
