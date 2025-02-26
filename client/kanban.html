@@ -42,16 +42,21 @@
       margin-top: 20px;
       cursor: pointer;
     }
+
+    .empty-board-message {
+      text-align: center;
+      margin-top: 50px;
+    }
   </style>
 </head>
 <body class="bg-gray-200">
 
   <nav class="bg-blue-600 p-4 text-white">
     <div class="container mx-auto flex justify-between">
-      <div class="font-bold">The ultimate web app!</div>
+      <div class="font-bold">TASK APP</div>
       <div>
         <a href="home.html" class="px-4">Home</a>
-        <a href="kanban.html" class="px-4">Kanban Board</a>
+        <a href="kanban.html" class="px-4">Board</a>
         <a href="login.html" class="px-4" id="logout">Logout</a>
       </div>
     </div>
@@ -86,33 +91,38 @@
 
         if (response.ok) {
           const board = document.getElementById('board');
-          boardData.columns.forEach((column) => {
-            const columnElement = document.createElement('div');
-            columnElement.classList.add('column');
-            columnElement.setAttribute('data-column-id', column._id);
-            columnElement.innerHTML = `
-              <h3>${column.name}</h3>
-              <div class="cards-container" id="column-${column._id}">
-                ${column.cards.map(card => `
-                  <div class="card" draggable="true" data-card-id="${card._id}" ondragstart="drag(event)">
-                    <p>${card.title}</p>
-                    <button class="bg-red-600 text-white py-1 px-2 mt-2 remove-card-btn" onclick="removeCard('${card._id}', '${column._id}')">Remove</button>
-                  </div>
-                `).join('')}
-              </div>
-              <button class="bg-green-500 text-white py-1 px-2 mt-4 add-card-btn" onclick="addCard('${column._id}')">Add card</button>
-              <button class="bg-yellow-500 text-white py-1 px-2 mt-4 rename-column-btn" onclick="renameColumn('${column._id}')">Rename Column</button>
-              <button class="bg-red-500 text-white py-1 px-2 mt-4 remove-column-btn" onclick="removeColumn('${column._id}')">Remove Column</button>
+          if (boardData.columns.length === 0) {
+            // Show empty board message and add new column button
+            const emptyMessage = document.createElement('div');
+            emptyMessage.classList.add('empty-board-message');
+            emptyMessage.innerHTML = `
+              <p>No columns available. Click below to add a new column.</p>
             `;
-            board.appendChild(columnElement);
-          });
-
-          document.getElementById('add-column').addEventListener('click', function() {
-            const newColumnName = prompt('Enter new column name:');
-            if (newColumnName) {
-              addColumn(newColumnName);
-            }
-          });
+            board.appendChild(emptyMessage);
+            document.getElementById('add-column').style.display = 'inline-block'; // Show button to add column
+          } else {
+            // Render columns and cards if any exist
+            boardData.columns.forEach((column) => {
+              const columnElement = document.createElement('div');
+              columnElement.classList.add('column');
+              columnElement.setAttribute('data-column-id', column._id);
+              columnElement.innerHTML = ` 
+                <h3>${column.name}</h3>
+                <div class="cards-container" id="column-${column._id}">
+                  ${column.cards.map(card => ` 
+                    <div class="card" draggable="true" data-card-id="${card._id}" ondragstart="drag(event)">
+                      <p>${card.title}</p>
+                      <button class="bg-red-600 text-white py-1 px-2 mt-2 remove-card-btn" onclick="removeCard('${card._id}', '${column._id}')">Remove</button>
+                    </div>
+                  `).join('')}
+                </div>
+                <button class="bg-green-500 text-white py-1 px-2 mt-4 add-card-btn" onclick="addCard('${column._id}')">Add Card</button>
+                <button class="bg-yellow-500 text-white py-1 px-2 mt-4 rename-column-btn" onclick="renameColumn('${column._id}')">Rename Column</button>
+                <button class="bg-red-500 text-white py-1 px-2 mt-4 remove-column-btn" onclick="removeColumn('${column._id}')">Remove Column</button>
+              `;
+              board.appendChild(columnElement);
+            });
+          }
         } else {
           console.error('Failed to load board data', boardData.message);
         }
@@ -121,22 +131,41 @@
       }
 
       // Add new column functionality
+      document.getElementById('add-column').addEventListener('click', function() {
+        console.log('painoit!!!');
+        const newColumnName = prompt('Enter new column name:');
+        if (newColumnName) {
+          addColumn(newColumnName);
+        }
+      });
+
       async function addColumn(name) {
-        const response = await fetch('http://localhost:5000/api/column', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-auth-token': token
-          },
-          body: JSON.stringify({ name })
-        });
-        const data = await response.json();
-        if (response.ok) {
-          location.reload();  // Refresh to show the new column
+        const token = localStorage.getItem('authToken');
+        if (!token) {
+          window.location.href = 'login.html';  // If no token, redirect to login
+        }
+
+        try {
+          const response = await fetch('http://localhost:5000/api/column', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-auth-token': token
+            },
+            body: JSON.stringify({ name })
+          });
+          const data = await response.json();
+          if (response.ok) {
+            location.reload();  // Refresh to show the newly added column
+          } else {
+            console.error('Failed to add column', data.message);
+          }
+        } catch (error) {
+          console.error('Error adding column:', error);
         }
       }
 
-      // Add new card functionality
+      // Other functionality for adding, removing cards and columns
       async function addCard(columnId) {
         const cardTitle = prompt('Enter card title:');
         if (cardTitle) {
@@ -148,14 +177,12 @@
             },
             body: JSON.stringify({ title: cardTitle })
           });
-          const data = await response.json();
           if (response.ok) {
             location.reload();  // Refresh to show the new card
           }
         }
       }
 
-      // Remove card functionality
       async function removeCard(cardId, columnId) {
         const response = await fetch(`http://localhost:5000/api/card/${cardId}/remove`, {
           method: 'DELETE',
@@ -164,13 +191,11 @@
             'x-auth-token': token
           }
         });
-        const data = await response.json();
         if (response.ok) {
           location.reload();  // Refresh to reflect card removal
         }
       }
 
-      // Remove column functionality
       async function removeColumn(columnId) {
         const response = await fetch(`http://localhost:5000/api/column/${columnId}/remove`, {
           method: 'DELETE',
@@ -179,13 +204,11 @@
             'x-auth-token': token
           }
         });
-        const data = await response.json();
         if (response.ok) {
           location.reload();  // Refresh to reflect column removal
         }
       }
 
-      // Rename column functionality
       async function renameColumn(columnId) {
         const newName = prompt('Enter new column name:');
         if (newName) {
@@ -197,49 +220,13 @@
             },
             body: JSON.stringify({ name: newName })
           });
-          const data = await response.json();
           if (response.ok) {
             location.reload();  // Refresh to show the renamed column
           }
         }
       }
-
-      // Handle card dragging and dropping
-      let draggedCardId;
-      window.drag = function(ev) {
-        draggedCardId = ev.target.getAttribute('data-card-id');
-      };
-
-      window.drop = async function(ev) {
-        ev.preventDefault();
-        const targetColumnId = ev.target.closest('.column').getAttribute('data-column-id');
-        if (targetColumnId && draggedCardId) {
-          await moveCard(draggedCardId, targetColumnId);
-        }
-      };
-
-      window.allowDrop = function(ev) {
-        ev.preventDefault();
-      };
-
-      // Move card function
-      async function moveCard(cardId, targetColumnId) {
-        const response = await fetch(`http://localhost:5000/api/card/${cardId}/move`, {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-auth-token': token
-          },
-          body: JSON.stringify({ targetColumnId })
-        });
-        const data = await response.json();
-        if (response.ok) {
-          location.reload();  // Refresh to reflect card movement
-        }
-      }
     });
 
-    // Logout functionality
     document.getElementById('logout').addEventListener('click', function() {
       localStorage.removeItem('authToken');
       window.location.href = 'login.html';  // Redirect to login after logout
