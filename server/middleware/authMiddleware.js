@@ -6,7 +6,7 @@ const authMiddleware = (req, res, next) => {
   
   // If no token is provided, respond with a 401 Unauthorized status
   if (!token) {
-    return res.status(401).json({ message: 'Access denied. No token provided.' });
+    return res.status(401).json({ message: 'Access denied. Unauthorized4444.' });
   }
 
   try {

@@ -4,6 +4,7 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const connectDB = require('./config/db'); // Import DB connection setup
 const authRoutes = require('./routes/authRoutes'); // Import the auth routes
+const boardRoutes = require('./routes/boardRoutes'); // Import the auth routes
 
 dotenv.config(); // Load environment variables from .env file
 
@@ -19,6 +20,8 @@ connectDB(); // Connect to MongoDB
 
 // Routes
 app.use('/api', authRoutes); // Use the authentication routes
+app.use('/api', boardRoutes);
+
 
 // Default route (test if server is running)
 app.get('/', (req, res) => {

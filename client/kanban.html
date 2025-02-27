@@ -6,6 +6,7 @@
   <title>Kanban Board</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
   <style>
+    /* Add your CSS here */
     .board {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
@@ -24,22 +25,22 @@
     }
 
     .column h3 {
-      font-size: 1.5rem;
+      font-size: 1.6rem;
       margin-bottom: 10px;
       font-weight: bold;
     }
 
     .card {
-      background-color: white;
+      background-color: rgb(88, 17, 17);
       border-radius: 8px;
       padding: 10px;
       margin-bottom: 10px;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      box-shadow: 0 2px 4px rgba(13, 11, 11, 0.1);
       cursor: pointer;
     }
 
     .add-column-btn {
-      margin-top: 20px;
+      margin-top: 30px;
       cursor: pointer;
     }
 
@@ -73,6 +74,76 @@
   </div>
 
   <script>
+    // Define functions first before usage
+
+    async function addCard(columnId) {
+      const token = localStorage.getItem('authToken');
+      if (!token) {
+        window.location.href = 'login.html'; // Redirect to login if no token
+      }
+      const cardTitle = prompt('Enter card title:');
+      if (cardTitle) {
+        try {
+          const response = await fetch(`http://localhost:5000/api/column/${columnId}/card`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-auth-token': token
+            },
+            body: JSON.stringify({ title: cardTitle })
+          });
+          if (response.ok) {
+            location.reload();  // Refresh to show the new card
+          }
+        } catch (error) {
+          console.error('Error adding card:', error);
+        }
+      }
+    }
+
+    async function removeColumn(columnId) {
+      const token = localStorage.getItem('authToken');
+      if (!token) {
+        window.location.href = 'login.html';  // Redirect if no token
+      }
+      try {
+        const response = await fetch(`http://localhost:5000/api/column/${columnId}/remove`, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-auth-token': token
+          }
+        });
+        if (response.ok) {
+          location.reload(); // Refresh to reflect column removal
+        }
+      } catch (error) {
+        console.error('Error removing column:', error);
+      }
+    }
+
+    async function renameColumn(columnId) {
+      const newName = prompt('Enter new column name:');
+      if (newName) {
+        const token = localStorage.getItem('authToken');
+        if (!token) {
+          window.location.href = 'login.html';  // Redirect to login if no token
+        }
+        const response = await fetch(`http://localhost:5000/api/column/${columnId}/rename`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-auth-token': token
+          },
+          body: JSON.stringify({ name: newName })
+        });
+        if (response.ok) {
+          location.reload();  // Refresh to show the renamed column
+        }
+      }
+    }
+
+    // Add event listener to the document
     document.addEventListener('DOMContentLoaded', async function() {
       const token = localStorage.getItem('authToken');
       if (!token) {
@@ -130,9 +201,7 @@
         console.error('Error fetching board data:', error);
       }
 
-      // Add new column functionality
       document.getElementById('add-column').addEventListener('click', function() {
-        console.log('painoit!!!');
         const newColumnName = prompt('Enter new column name:');
         if (newColumnName) {
           addColumn(newColumnName);
@@ -142,7 +211,7 @@
       async function addColumn(name) {
         const token = localStorage.getItem('authToken');
         if (!token) {
-          window.location.href = 'login.html';  // If no token, redirect to login
+          window.location.href = 'login.html'; // Redirect to login if no token
         }
 
         try {
@@ -158,71 +227,10 @@
           if (response.ok) {
             location.reload();  // Refresh to show the newly added column
           } else {
-            console.error('Failed to add column', data.message);
+            console.error('Failed to add column:', data.message);
           }
         } catch (error) {
           console.error('Error adding column:', error);
-        }
-      }
-
-      // Other functionality for adding, removing cards and columns
-      async function addCard(columnId) {
-        const cardTitle = prompt('Enter card title:');
-        if (cardTitle) {
-          const response = await fetch(`http://localhost:5000/api/column/${columnId}/card`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'x-auth-token': token
-            },
-            body: JSON.stringify({ title: cardTitle })
-          });
-          if (response.ok) {
-            location.reload();  // Refresh to show the new card
-          }
-        }
-      }
-
-      async function removeCard(cardId, columnId) {
-        const response = await fetch(`http://localhost:5000/api/card/${cardId}/remove`, {
-          method: 'DELETE',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-auth-token': token
-          }
-        });
-        if (response.ok) {
-          location.reload();  // Refresh to reflect card removal
-        }
-      }
-
-      async function removeColumn(columnId) {
-        const response = await fetch(`http://localhost:5000/api/column/${columnId}/remove`, {
-          method: 'DELETE',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-auth-token': token
-          }
-        });
-        if (response.ok) {
-          location.reload();  // Refresh to reflect column removal
-        }
-      }
-
-      async function renameColumn(columnId) {
-        const newName = prompt('Enter new column name:');
-        if (newName) {
-          const response = await fetch(`http://localhost:5000/api/column/${columnId}/rename`, {
-            method: 'PATCH',
-            headers: {
-              'Content-Type': 'application/json',
-              'x-auth-token': token
-            },
-            body: JSON.stringify({ name: newName })
-          });
-          if (response.ok) {
-            location.reload();  // Refresh to show the renamed column
-          }
         }
       }
     });
