@@ -43,3 +43,25 @@ http-server
 in client folder
 
 
+<!-- declaration of AI usage
+Degugging frontend errors as part of the development work
+A few examples of the use of the JWT token
+
+I have implemented:
+Utilization of database
+MongoDB. All the data needs to be stored in a database
+Authentication:
+Users have to have an option to register and login. You can use JWT or session based authorization
+Only authenticated users can see, add or remove columns or cards
+Features
+Authenticated users can:
+Add/remove/rename columns to/of their own board
+Add cards on/of their own board. Card display in frontend has some problem but they are going to database at least.
+Logout
+Non-authenticated users can register and login -->
+
+
+I am hoping for 23 points for this work. And I hope it's enough to pass the course
+
+
+
