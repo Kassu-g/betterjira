@@ -1,18 +1,14 @@
-// Add a new column
 const Board = require('../models/Board');
 const Card = require('../models/Card');
 
-// Get board data for the authenticated user
 exports.getBoard = async (req, res) => {
   try {
-    // Find the board associated with the authenticated user
     const board = await Board.findOne({ userId: req.user._id });
 
     if (!board) {
       return res.status(404).json({ message: 'Board not found' });
     }
 
-    // Return the board data (columns and cards)
     res.status(200).json(board);
   } catch (error) {
     console.error('Error fetching board:', error);
@@ -20,7 +16,6 @@ exports.getBoard = async (req, res) => {
   }
 };
 
-// Add a new column
 exports.addColumn = async (req, res) => {
     const { name } = req.body;
     
@@ -31,11 +26,10 @@ exports.addColumn = async (req, res) => {
       if (!board) {
         board = new Board({
           userId: req.user._id,
-          columns: []  // Initialize with an empty columns array
+          columns: []
         });
       }
   
-      // Create a new column
       const newColumn = {
         name,
         cards: [],
@@ -57,11 +51,11 @@ exports.addColumn = async (req, res) => {
     const { columnId } = req.params;
     try {
       const board = await Board.findOne({ userId: req.user._id });
-      const columnIndex = board.columns.findIndex(col => col._id.toString() === columnId);  // Compare ObjectId as string
+      const columnIndex = board.columns.findIndex(col => col._id.toString() === columnId);  // Compare string
       if (columnIndex === -1) {
         return res.status(404).json({ message: 'Column not found' });
       }
-      board.columns.splice(columnIndex, 1);  // Remove the column from the array
+      board.columns.splice(columnIndex, 1);
       await board.save();
       res.status(200).json({ message: 'Column removed successfully' });
     } catch (error) {
@@ -71,50 +65,48 @@ exports.addColumn = async (req, res) => {
   };
   
 
+    
+  exports.addCardToColumn = async (req, res) => {
+    const { columnId } = req.params;
+    const { title } = req.body;
   
-// Add a card to a column
-exports.addCardToColumn = async (req, res) => {
-  const { columnId } = req.params;
-  const { title } = req.body;
+    console.log("Received card data:", req.body);
   
-  if (!title) {
-    return res.status(400).json({ message: 'Card title is required' });
-  }
-
-  try {
-    const board = await Board.findOne({ userId: req.user._id });
-
-    if (!board) {
-      return res.status(404).json({ message: 'Board not found' });
+    if (!title) {
+      return res.status(400).json({ message: 'Card title is required' });
     }
-
-    const column = board.columns.id(columnId);  // Find the column by its _id
-
-    if (!column) {
-      return res.status(404).json({ message: 'Column not found' });
+  
+    try {
+      const board = await Board.findOne({ userId: req.user._id });
+      if (!board) {
+        console.error('Board not found for user', req.user._id);
+        return res.status(404).json({ message: 'Board not found' });
+      }
+  
+      const column = board.columns.id(columnId);
+      if (!column) {
+        console.error('Column not found for columnId:', columnId);
+        return res.status(404).json({ message: 'Column not found' });
+      }
+  
+      const newCard = new Card({ title });
+  
+      await newCard.save();
+      console.log('Card created successfully:', newCard);
+  
+      column.cards.push(newCard._id);
+  
+      await board.save();
+  
+      res.status(200).json({ message: 'Card added successfully', card: newCard });
+    } catch (error) {
+      console.error('Error adding card:', error);
+      res.status(500).json({ message: 'Server error' });
     }
-
-    // Create a new card document
-    const newCard = new Card({ title });
-
-    // Save the new card to the Card collection
-    await newCard.save();
-
-    // Push the card's ObjectId into the column's cards array
-    column.cards.push(newCard._id);
-
-    // Save the updated board with the new card
-    await board.save();
-
-    res.status(200).json({ message: 'Card added successfully', card: newCard });
-  } catch (error) {
-    console.error('Error adding card:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-};
+  };
+  
 
   
-  // Remove a card
   exports.removeCard = async (req, res) => {
     const { cardId } = req.params;
     try {
@@ -132,7 +124,6 @@ exports.addCardToColumn = async (req, res) => {
     }
   };
   
-  // Move a card between columns
   exports.moveCard = async (req, res) => {
     const { cardId, targetColumnId } = req.body;
     try {
@@ -152,7 +143,6 @@ exports.addCardToColumn = async (req, res) => {
       res.status(500).json({ message: 'Server error' });
     }
   };
-  // boardController.js
  exports.renameColumn = async (req, res) => {
     const { columnId } = req.params;
     const { name } = req.body;
@@ -165,7 +155,7 @@ exports.addCardToColumn = async (req, res) => {
         return res.status(404).json({ message: 'Column not found' });
       }
   
-      column.name = name;  // Rename the column
+      column.name = name;  // Rename
       await board.save();
   
       res.status(200).json({ message: 'Column renamed successfully', column });
