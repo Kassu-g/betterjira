@@ -1,1 +1,1 @@
-console.log("Kanban Board is ready.");
+console.log("My board is ready.");

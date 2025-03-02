@@ -1,9 +1,9 @@
-document.addEventListener('DOMContentLoaded', function () {
-    // Handling Registration
+document.addEventListener('DOMContentLoaded', function () {     // Handling Reg
+
     document.getElementById('registerForm').addEventListener('submit', async function(event) {
       event.preventDefault();
       
-      // Get form values
+      // Get forms
       const email = document.getElementById('email').value;
       const password = document.getElementById('password').value;
       const confirmPassword = document.getElementById('confirmPassword').value;
@@ -14,7 +14,7 @@ document.addEventListener('DOMContentLoaded', function () {
         return;
       }
   
-      // Send registration data to the backend
+      // Send registration data to backend
       try {
         const response = await fetch('http://localhost:5000/api/register', {
           method: 'POST',
@@ -27,10 +27,10 @@ document.addEventListener('DOMContentLoaded', function () {
         if (response.ok) {
           // Save the token to localStorage
           localStorage.setItem('authToken', data.token);
-          console.log("Stored token:", data.token); // Debugging
+          console.log("Stored token:", data.token);
   
-          // Redirect to the Kanban Board
-          window.location.href = 'kanban.html';  // Ensure kanban.html exists
+          // Redirect to the Kanban Board here
+          window.location.href = 'kanban.html';
         } else {
           console.error('Registration failed:', data.message);
           alert('Registration failed: ' + data.message);
@@ -40,8 +40,8 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     });
   });
-  document.addEventListener('DOMContentLoaded', function () {
-    // Handling Login
+  document.addEventListener('DOMContentLoaded', function () { // Handling Login here
+    
     document.getElementById('loginForm').addEventListener('submit', async function(event) {
       event.preventDefault();
   
@@ -61,8 +61,8 @@ document.addEventListener('DOMContentLoaded', function () {
           // Save the token to localStorage
           localStorage.setItem('authToken', data.token);
   
-          // Redirect to the Kanban Board
-          window.location.href = 'kanban.html';  // Ensure kanban.html exists
+          // Redirect to the Kanban Board here
+          window.location.href = 'kanban.html';
         } else {
           console.error('Login failed:', data.message);
           alert('Login failed: ' + data.message);
