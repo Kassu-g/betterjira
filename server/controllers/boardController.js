@@ -1,5 +1,6 @@
 // Add a new column
 const Board = require('../models/Board');
+const Card = require('../models/Card');
 
 // Get board data for the authenticated user
 exports.getBoard = async (req, res) => {
@@ -71,24 +72,47 @@ exports.addColumn = async (req, res) => {
   
 
   
-  // Add a card to a column
-  exports.addCardToColumn = async (req, res) => {
-    const { columnId } = req.params;
-    const { title } = req.body;
-    try {
-      const board = await Board.findOne({ userId: req.user._id });
-      const column = board.columns.id(columnId);
-      if (!column) {
-        return res.status(404).json({ message: 'Column not found' });
-      }
-      column.cards.push({ title });
-      await board.save();
-      res.status(200).json({ message: 'Card added successfully' });
-    } catch (error) {
-      console.error('Error adding card:', error);
-      res.status(500).json({ message: 'Server error' });
+// Add a card to a column
+exports.addCardToColumn = async (req, res) => {
+  const { columnId } = req.params;
+  const { title } = req.body;
+  
+  if (!title) {
+    return res.status(400).json({ message: 'Card title is required' });
+  }
+
+  try {
+    const board = await Board.findOne({ userId: req.user._id });
+
+    if (!board) {
+      return res.status(404).json({ message: 'Board not found' });
     }
-  };
+
+    const column = board.columns.id(columnId);  // Find the column by its _id
+
+    if (!column) {
+      return res.status(404).json({ message: 'Column not found' });
+    }
+
+    // Create a new card document
+    const newCard = new Card({ title });
+
+    // Save the new card to the Card collection
+    await newCard.save();
+
+    // Push the card's ObjectId into the column's cards array
+    column.cards.push(newCard._id);
+
+    // Save the updated board with the new card
+    await board.save();
+
+    res.status(200).json({ message: 'Card added successfully', card: newCard });
+  } catch (error) {
+    console.error('Error adding card:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
   
   // Remove a card
   exports.removeCard = async (req, res) => {
