@@ -1,25 +1,21 @@
-/* Custom background color for the Kanban board */
 body {
-    background-color: #f4f4f9; /* Light grey background */
+    background-color: #f4f4f9;
   }
   
-  /* Customize the button */
   button {
-    background-color: #007BFF; /* Blue color */
+    background-color: #007BFF;
     color: white;
     padding: 12px 24px;
     border-radius: 8px;
     transition: background-color 0.3s ease;
   }
   
-  /* Hover effect on the buttons */
   button:hover {
     background-color: #0056b3;
   }
   
-  /* Custom styling for the Kanban cards */
   .card {
-    background-color: #ffffff;
+    background-color: #420707;
     padding: 16px;
     border-radius: 10px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
@@ -27,7 +23,7 @@ body {
   }
   
   .card h3 {
-    font-size: 1.2rem;
+    font-size: 1.3rem;
     font-weight: bold;
   }
   
@@ -36,23 +32,20 @@ body {
     color: #666;
   }
   
-  /* Column layout styling */
   .column {
-    background-color: #f9fafb;
+    background-color: #f0f5f9;
     padding: 20px;
     border-radius: 8px;
-    width: 30%;
+    width: 35%;
     min-height: 300px;
   }
   
-  /* Styling for the Kanban header */
   .column h3 {
-    font-size: 1.5rem;
-    color: #333;
-    margin-bottom: 20px;
+    font-size: 1.6rem;
+    color: #141414;
+    margin-bottom: 25px;
   }
   
-  /* Responsiveness: Stack columns on smaller screens */
   @media (max-width: 768px) {
     .column {
       width: 100%;
