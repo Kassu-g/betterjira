@@ -1,6 +1,4 @@
 const mongoose = require('mongoose');
-
-// Define the column schema
 const columnSchema = new mongoose.Schema({
   name: {
     type: String,

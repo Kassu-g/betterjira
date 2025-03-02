@@ -1,14 +1,13 @@
 const mongoose = require('mongoose');
-const Column = require('./Column'); // Reference to Column model
+const Column = require('./Column'); //link column model
 
-// Define the board schema
 const boardSchema = new mongoose.Schema({
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true,
   },
-  columns: [Column.schema], // Reference columns defined in the Column model
+  columns: [Column.schema], // column schema
 });
 
 const Board = mongoose.model('Board', boardSchema);

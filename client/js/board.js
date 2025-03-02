@@ -1,6 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
     // Fetch existing columns and cards from the backend when the page loads
-    // Example of adding a card programmatically (it would be dynamic):
     const todoColumn = document.getElementById('todo-column');
     const addButton = document.querySelector("button");
     addButton.addEventListener('click', () => {
