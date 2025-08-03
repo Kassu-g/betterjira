@@ -61,7 +61,9 @@ Logout
 Non-authenticated users can register and login -->
 
 
-I am hoping for 23 points for this work. And I hope it's enough to pass the course
+I am hoping for 25 points for this work. And I hope it's enough to pass the course
+
+
 
 
 
