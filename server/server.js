@@ -13,13 +13,18 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
+app.use('/api', (req, res, next) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  next();
+});
+
 connectDB(); // Connect to MongoDB here
 
 app.use('/api', authRoutes); //authentication routes
 app.use('/api', boardRoutes); //use board routes
 
-
-// Default
 app.get('/', (req, res) => {
   res.send('Server is running!');
 });

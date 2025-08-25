@@ -1,5 +1,3 @@
-// app.js
-
 console.log("My board is ready.");
 
 function initDnD() {
@@ -23,7 +21,6 @@ function initDnD() {
         const newOrder = Array.from(evt.to.querySelectorAll('.card'))
           .map(el => el.dataset.cardId);
 
-        // Täällä voit kutsua backendiäsi
         persistReorder({
           cardId,
           newColumnId,
@@ -55,7 +52,6 @@ async function persistReorder(payload) {
   }
 }
 
-// Olemassa oleva DOMContentLoaded fetch-taulun logiikkaan
 document.addEventListener('DOMContentLoaded', async function() {
   const token = localStorage.getItem('authToken');
   if (!token) {
@@ -102,7 +98,6 @@ document.addEventListener('DOMContentLoaded', async function() {
           board.appendChild(columnElement);
         });
 
-        // Alustetaan DnD nyt kun DOM on rakennettu
         initDnD();
       }
     } else {

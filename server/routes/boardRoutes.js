@@ -14,7 +14,9 @@ router.patch('/card/:cardId/move', authMiddleware, boardController.moveCard);
 router.delete('/column/:columnId/remove', authMiddleware, boardController.removeColumn);
 router.patch('/column/:columnId/rename', authMiddleware, boardController.renameColumn);
 
-// UUSI: järjestyksen tallennus (SortableJS kutsuu tätä)
+router.put('/board/columns/reorder', authMiddleware, boardController.reorderBoardColumns);
 router.put('/columns/:columnId/reorder', authMiddleware, boardController.reorderColumnCards);
+router.patch('/card/:cardId', authMiddleware, boardController.updateCard);
+
 
 module.exports = router;

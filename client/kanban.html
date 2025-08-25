@@ -6,7 +6,6 @@
   <title>Kanban Board</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 
-  <!-- SortableJS: korttien Drag & Drop (myös mobiilissa) -->
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js" defer></script>
 
   <style>
@@ -21,27 +20,28 @@
       border-radius: 8px;
       padding: 20px;
       box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-      height: 500px;
+      min-height: 200px;
       display: flex;
       flex-direction: column;
     }
     .column h3 {
-      font-size: 1.6rem;
+      font-size: 1.25rem;
       margin-bottom: 10px;
-      font-weight: bold;
+      font-weight: 700;
+      cursor: grab; 
     }
     .card {
-      background-color: rgb(88, 17, 17);
       border-radius: 8px;
       padding: 10px;
       margin-bottom: 10px;
       box-shadow: 0 2px 4px rgba(13, 11, 11, 0.1);
       cursor: grab;
+      background-color: #ffffff;
     }
     .cards-container {
       touch-action: pan-y;
       overflow: auto;
-      min-height: 24px; /* helpompi pudottaa tyhjään sarakkeeseen */
+      min-height: 24px;
       padding-bottom: 2px;
     }
     .add-column-btn { margin-top: 30px; cursor: pointer; }
@@ -53,13 +53,17 @@
   <nav class="bg-blue-600 p-4 text-white">
     <div class="container mx-auto flex justify-between">
       <div class="font-bold">TASK APP</div>
-      <div>
+      <div class="flex gap-2 items-center">
         <a href="home.html" class="px-4">Home</a>
         <a href="kanban.html" class="px-4">Board</a>
         <a href="login.html" class="px-4" id="logout">Logout</a>
       </div>
     </div>
   </nav>
+
+  <div class="container mx-auto mt-4 px-2">
+    <input id="search" class="border p-2 w-full rounded" placeholder="Search cards..." />
+  </div>
 
   <div class="container mx-auto">
     <div id="board" class="board"></div>
@@ -69,10 +73,9 @@
   </div>
 
   <script>
-  // ---------- Card & Column actions ----------
   async function addCard(columnId) {
     const token = localStorage.getItem('authToken');
-    if (!token) { window.location.href = 'login.html'; }
+    if (!token) { window.location.href = 'login.html'; return; }
 
     const cardTitle = prompt('Enter card title:');
     if (cardTitle) {
@@ -92,7 +95,7 @@
 
   async function removeCard(cardId) {
     const token = localStorage.getItem('authToken');
-    if (!token) { window.location.href = 'login.html'; }
+    if (!token) { window.location.href = 'login.html'; return; }
     try {
       const response = await fetch(`http://localhost:5000/api/card/${cardId}/remove`, {
         method: 'DELETE',
@@ -106,7 +109,7 @@
 
   async function removeColumn(columnId) {
     const token = localStorage.getItem('authToken');
-    if (!token) { window.location.href = 'login.html'; }
+    if (!token) { window.location.href = 'login.html'; return; }
     try {
       const response = await fetch(`http://localhost:5000/api/column/${columnId}/remove`, {
         method: 'DELETE',
@@ -122,7 +125,7 @@
     const newName = prompt('Enter new column name:');
     if (newName) {
       const token = localStorage.getItem('authToken');
-      if (!token) { window.location.href = 'login.html'; }
+      if (!token) { window.location.href = 'login.html'; return; }
       const response = await fetch(`http://localhost:5000/api/column/${columnId}/rename`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', 'x-auth-token': token },
@@ -132,7 +135,27 @@
     }
   }
 
-  // ---------- SortableJS init + persist ----------
+  async function changeColor(cardId) {
+    const color = prompt('Enter a hex color (e.g. #ff0000):');
+    if (!color) return;
+    const token = localStorage.getItem('authToken');
+    if (!token) { window.location.href = 'login.html'; return; }
+    try {
+      const res = await fetch(`http://localhost:5000/api/card/${cardId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'x-auth-token': token },
+        body: JSON.stringify({ color })
+      });
+      if (!res.ok) {
+        console.error('Color update failed:', await res.text());
+        return;
+      }
+      location.reload();
+    } catch (e) {
+      console.error('Color update error:', e);
+    }
+  }
+
   function initDnD() {
     document.querySelectorAll('.cards-container').forEach((listEl) => {
       if (listEl.__sortableInited) return;
@@ -146,7 +169,6 @@
         dragClass: 'ring-2 ring-blue-400',
         fallbackOnBody: true,
         swapThreshold: 0.65,
-
         onEnd(evt) {
           const cardId = evt.item.dataset.cardId;
 
@@ -179,6 +201,17 @@
 
       listEl.__sortableInited = true;
     });
+
+    new Sortable(document.getElementById('board'), {
+      group: 'columns',
+      animation: 150,
+      draggable: '.column',
+      handle: 'h3',
+      onEnd(evt) {
+        const order = [...document.querySelectorAll('.column')].map(c => c.dataset.columnId);
+        persistColumnReorder(order).catch(err => console.error('Persist column reorder failed:', err));
+      }
+    });
   }
 
   async function persistReorder(payload) {
@@ -193,20 +226,34 @@
     if (!res.ok) throw new Error(await res.text());
   }
 
-  // ---------- Board render ----------
+  async function persistColumnReorder(order) {
+    const token = localStorage.getItem('authToken');
+    if (!token) return;
+    const res = await fetch('http://localhost:5000/api/board/columns/reorder', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'x-auth-token': token },
+      body: JSON.stringify({ newOrder: order })
+    });
+    if (!res.ok) throw new Error(await res.text());
+  }
+
   document.addEventListener('DOMContentLoaded', async function() {
     const token = localStorage.getItem('authToken');
-    if (!token) { window.location.href = 'login.html'; }
+    if (!token) { window.location.href = 'login.html'; return; }
 
     try {
-      const response = await fetch('http://localhost:5000/api/board', {
+      // Välimuistiton ongelma
+      const response = await fetch(`http://localhost:5000/api/board?t=${Date.now()}`, {
         method: 'GET',
+        cache: 'no-store',
         headers: { 'Content-Type': 'application/json', 'x-auth-token': token }
       });
       const boardData = await response.json();
 
       if (response.ok) {
         const board = document.getElementById('board');
+        board.innerHTML = '';
+
         if (!boardData.columns || boardData.columns.length === 0) {
           const emptyMessage = document.createElement('div');
           emptyMessage.classList.add('empty-board-message');
@@ -223,15 +270,20 @@
               <h3>${column.name}</h3>
               <div class="cards-container" id="column-${column._id}">
                 ${column.cards.map(card => `
-                  <div class="card" data-card-id="${card._id}">
+                  <div class="card" data-card-id="${card._id}" style="background-color:${card.color || '#ffffff'}">
                     <p>${card.title || 'No title'}</p>
-                    <button class="bg-red-600 text-white py-1 px-2 mt-2 remove-card-btn" onclick="removeCard('${card._id}')">Remove</button>
+                    <div class="flex gap-2 mt-2">
+                      <button class="bg-blue-600 text-white py-1 px-2 rounded" onclick="changeColor('${card._id}')">Color</button>
+                      <button class="bg-red-600 text-white py-1 px-2 rounded" onclick="removeCard('${card._id}')">Remove</button>
+                    </div>
                   </div>
                 `).join('')}
               </div>
-              <button class="bg-green-500 text-white py-1 px-2 mt-4 add-card-btn" onclick="addCard('${column._id}')">Add Card</button>
-              <button class="bg-yellow-500 text-white py-1 px-2 mt-4 rename-column-btn" onclick="renameColumn('${column._id}')">Rename Column</button>
-              <button class="bg-red-500 text-white py-1 px-2 mt-4 remove-column-btn" onclick="removeColumn('${column._id}')">Remove Column</button>
+              <div class="flex gap-2 mt-4">
+                <button class="bg-green-500 text-white py-1 px-2 rounded" onclick="addCard('${column._id}')">Add Card</button>
+                <button class="bg-yellow-500 text-white py-1 px-2 rounded" onclick="renameColumn('${column._id}')">Rename Column</button>
+                <button class="bg-red-500 text-white py-1 px-2 rounded" onclick="removeColumn('${column._id}')">Remove Column</button>
+              </div>
             `;
             board.appendChild(columnElement);
           });
@@ -246,7 +298,6 @@
     }
   });
 
-  // ---------- Add column & logout ----------
   document.getElementById('add-column').addEventListener('click', function() {
     const newColumnName = prompt('Enter new column name:');
     if (newColumnName) addColumn(newColumnName);
@@ -254,7 +305,7 @@
 
   async function addColumn(name) {
     const token = localStorage.getItem('authToken');
-    if (!token) { window.location.href = 'login.html'; }
+    if (!token) { window.location.href = 'login.html'; return; }
     try {
       const response = await fetch('http://localhost:5000/api/column', {
         method: 'POST',
@@ -272,6 +323,14 @@
   document.getElementById('logout').addEventListener('click', function() {
     localStorage.removeItem('authToken');
     window.location.href = 'login.html';
+  });
+
+  document.getElementById('search').addEventListener('input', e => {
+    const q = e.target.value.toLowerCase();
+    document.querySelectorAll('.card').forEach(c => {
+      const txt = c.innerText.toLowerCase();
+      c.style.display = txt.includes(q) ? '' : 'none';
+    });
   });
   </script>
 </body>
