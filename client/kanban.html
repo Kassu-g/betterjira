@@ -1,10 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Kanban Board</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+
+  <!-- SortableJS: korttien Drag & Drop (myös mobiilissa) -->
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js" defer></script>
+
   <style>
     .board {
       display: grid;
@@ -12,7 +16,6 @@
       gap: 20px;
       margin-top: 20px;
     }
-
     .column {
       background-color: #f0f0f0;
       border-radius: 8px;
@@ -22,31 +25,26 @@
       display: flex;
       flex-direction: column;
     }
-
     .column h3 {
       font-size: 1.6rem;
       margin-bottom: 10px;
       font-weight: bold;
     }
-
     .card {
       background-color: rgb(88, 17, 17);
       border-radius: 8px;
       padding: 10px;
       margin-bottom: 10px;
       box-shadow: 0 2px 4px rgba(13, 11, 11, 0.1);
-      cursor: pointer;
+      cursor: grab; /* visuaalinen vihje vedosta */
     }
-
-    .add-column-btn {
-      margin-top: 30px;
-      cursor: pointer;
+    /* Sulava kosketusvieritys + DnD rinnakkain */
+    .cards-container { 
+      touch-action: pan-y; 
+      overflow: auto;
     }
-
-    .empty-board-message {
-      text-align: center;
-      margin-top: 50px;
-    }
+    .add-column-btn { margin-top: 30px; cursor: pointer; }
+    .empty-board-message { text-align: center; margin-top: 50px; }
   </style>
 </head>
 <body class="bg-gray-200">
@@ -63,207 +61,208 @@
   </nav>
 
   <div class="container mx-auto">
-    <div id="board" class="board">
-    </div>
-
+    <div id="board" class="board"></div>
     <div class="flex justify-center mt-6">
       <button id="add-column" class="bg-blue-600 text-white py-2 px-4 rounded">+ Add new column</button>
     </div>
   </div>
 
   <script>
-    // Functions first before usage
-
+  // ---------- Card & Column actions (sinun alkuperäiset funktiot) ----------
   async function addCard(columnId) {
     const token = localStorage.getItem('authToken');
-    if (!token) {
-      window.location.href = 'login.html';  // Redirect to login if no token
-    }
-  
+    if (!token) { window.location.href = 'login.html'; }
+
     const cardTitle = prompt('Enter card title:');
     if (cardTitle) {
       try {
         const response = await fetch(`http://localhost:5000/api/column/${columnId}/card`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-auth-token': token
-          },
-          body: JSON.stringify({ title: cardTitle })  // Send the card title
+          headers: { 'Content-Type': 'application/json', 'x-auth-token': token },
+          body: JSON.stringify({ title: cardTitle })
         });
-        if (response.ok) {
-          location.reload();  // Refresh to show the new card
-        } else {
-          const data = await response.json();
-          console.error('Error adding card:', data.message);
-        }
+        if (response.ok) location.reload();
+        else console.error('Error adding card:', (await response.json()).message);
       } catch (error) {
         console.error('Error adding card:', error);
       }
     }
   }
+
   async function removeCard(cardId, columnId) {
-      const token = localStorage.getItem('authToken');
-      if (!token) {
-        window.location.href = 'login.html';  // Redirect to login if no token
-      }
-
-      try {
-        const response = await fetch(`http://localhost:5000/api/card/${cardId}/remove`, {
-          method: 'DELETE',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-auth-token': token
-          }
-        });
-        if (response.ok) {
-          location.reload();  // Refresh to reflect card removal
-        }
-      } catch (error) {
-        console.error('Error removing card:', error);
-      }
+    const token = localStorage.getItem('authToken');
+    if (!token) { window.location.href = 'login.html'; }
+    try {
+      const response = await fetch(`http://localhost:5000/api/card/${cardId}/remove`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json', 'x-auth-token': token }
+      });
+      if (response.ok) location.reload();
+    } catch (error) {
+      console.error('Error removing card:', error);
     }
-
-
-    async function removeColumn(columnId) {
-      const token = localStorage.getItem('authToken');
-      if (!token) {
-        window.location.href = 'login.html';  // Redirect if no token
-      }
-      try {
-        const response = await fetch(`http://localhost:5000/api/column/${columnId}/remove`, {
-          method: 'DELETE',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-auth-token': token
-          }
-        });
-        if (response.ok) {
-          location.reload(); // Refresh to reflect column removal
-        }
-      } catch (error) {
-        console.error('Error removing column:', error);
-      }
-    }
-
-    async function renameColumn(columnId) {
-      const newName = prompt('Enter new column name:');
-      if (newName) {
-        const token = localStorage.getItem('authToken');
-        if (!token) {
-          window.location.href = 'login.html';  // Redirect to login if token missing
-        }
-        const response = await fetch(`http://localhost:5000/api/column/${columnId}/rename`, {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-auth-token': token
-          },
-          body: JSON.stringify({ name: newName })
-        });
-        if (response.ok) {
-          location.reload();  // Refresh
-        }
-      }
-    }
-
-    // Add event listener
-    document.addEventListener('DOMContentLoaded', async function() {
-  const token = localStorage.getItem('authToken');
-  if (!token) {
-    window.location.href = 'login.html';  // Redirect to login if no token
   }
 
-  try {
-    const response = await fetch('http://localhost:5000/api/board', {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-auth-token': token
-      }
-    });
-    const boardData = await response.json();
-
-    if (response.ok) {
-      const board = document.getElementById('board');
-      if (boardData.columns.length === 0) {
-        const emptyMessage = document.createElement('div');
-        emptyMessage.classList.add('empty-board-message');
-        emptyMessage.innerHTML = `<p>No columns available. Click below to add a new column.</p>`;
-        board.appendChild(emptyMessage);
-        document.getElementById('add-column').style.display = 'inline-block';
-      } else {
-        boardData.columns.forEach((column) => {
-          const columnElement = document.createElement('div');
-          columnElement.classList.add('column');
-          columnElement.setAttribute('data-column-id', column._id);
-          columnElement.innerHTML = `
-            <h3>${column.name}</h3>
-            <div class="cards-container" id="column-${column._id}">
-              ${column.cards.map(card => `
-                <div class="card" draggable="true" data-card-id="${card._id}">
-                  <p>${card.title || 'No title'}</p>  <!-- Ensure card.title is used here -->
-                  <button class="bg-red-600 text-white py-1 px-2 mt-2 remove-card-btn" onclick="removeCard('${card._id}', '${column._id}')">Remove</button>
-                </div>
-              `).join('')}
-            </div>
-            <button class="bg-green-500 text-white py-1 px-2 mt-4 add-card-btn" onclick="addCard('${column._id}')">Add Card</button>
-            <button class="bg-yellow-500 text-white py-1 px-2 mt-4 rename-column-btn" onclick="renameColumn('${column._id}')">Rename Column</button>
-            <button class="bg-red-500 text-white py-1 px-2 mt-4 remove-column-btn" onclick="removeColumn('${column._id}')">Remove Column</button>
-          `;
-          board.appendChild(columnElement);
-        });
-      }
-    } else {
-      console.error('Failed to load board data', boardData.message);
+  async function removeColumn(columnId) {
+    const token = localStorage.getItem('authToken');
+    if (!token) { window.location.href = 'login.html'; }
+    try {
+      const response = await fetch(`http://localhost:5000/api/column/${columnId}/remove`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json', 'x-auth-token': token }
+      });
+      if (response.ok) location.reload();
+    } catch (error) {
+      console.error('Error removing column:', error);
     }
-  } catch (error) {
-    console.error('Error fetching board data:', error);
   }
-});
 
+  async function renameColumn(columnId) {
+    const newName = prompt('Enter new column name:');
+    if (newName) {
+      const token = localStorage.getItem('authToken');
+      if (!token) { window.location.href = 'login.html'; }
+      const response = await fetch(`http://localhost:5000/api/column/${columnId}/rename`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'x-auth-token': token },
+        body: JSON.stringify({ name: newName })
+      });
+      if (response.ok) location.reload();
+    }
+  }
 
+  // ---------- SortableJS init + persist ----------
+  function initDnD() {
+    document.querySelectorAll('.cards-container').forEach((listEl) => {
+      if (listEl.__sortableInited) return;
 
+      new Sortable(listEl, {
+        group: 'cards',               // sallii siirrot sarakkeiden välillä
+        animation: 150,
+        draggable: '.card',
+        handle: '.card',              // koko kortti toimii kahvana
+        ghostClass: 'opacity-50',
+        dragClass: 'ring-2 ring-blue-400',
+        fallbackOnBody: true,
+        swapThreshold: 0.65,
 
-      document.getElementById('add-column').addEventListener('click', function() {
-        const newColumnName = prompt('Enter new column name:');
-        if (newColumnName) {
-          addColumn(newColumnName);
+        onEnd(evt) {
+          const cardId = evt.item.dataset.cardId;
+          // Sarake-div on .cards-container, sen parent .column jossa data-column-id
+          const newColumnId = evt.to.parentElement.getAttribute('data-column-id');
+          const newIndex = evt.newIndex;
+
+          const newOrder = Array.from(evt.to.querySelectorAll('.card'))
+            .map(el => el.dataset.cardId);
+
+          persistReorder({ cardId, newColumnId, newIndex, newOrder })
+            .catch(err => console.error('Persist reorder failed:', err));
         }
       });
 
-      async function addColumn(name) {
-        const token = localStorage.getItem('authToken');
-        if (!token) {
-          window.location.href = 'login.html'; // Redirect to login if no token
-        }
-
-        try {
-          const response = await fetch('http://localhost:5000/api/column', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'x-auth-token': token
-            },
-            body: JSON.stringify({ name })
-          });
-          const data = await response.json();
-          if (response.ok) {
-            location.reload();
-          } else {
-            console.error('Failed to add column:', data.message);
-          }
-        } catch (error) {
-          console.error('Error adding column:', error);
-        }
-      }
-    
-
-    document.getElementById('logout').addEventListener('click', function() {
-      localStorage.removeItem('authToken');
-      window.location.href = 'login.html';  // Redirect to login after logout here
+      listEl.__sortableInited = true;
     });
-  </script>
+  }
 
+  async function persistReorder(payload) {
+    const token = localStorage.getItem('authToken');
+    if (!token) return;
+
+    // Toteuta tämä endpoint backendiin (Express/Mongoose bulkWrite on helppo):
+    // PUT /api/columns/:columnId/reorder  body: { cardId, newIndex, newOrder }
+    const res = await fetch(`http://localhost:5000/api/columns/${payload.newColumnId}/reorder`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'x-auth-token': token },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      const txt = await res.text();
+      throw new Error(`${res.status} ${txt}`);
+    }
+  }
+
+  // ---------- Board render ----------
+  document.addEventListener('DOMContentLoaded', async function() {
+    const token = localStorage.getItem('authToken');
+    if (!token) { window.location.href = 'login.html'; }
+
+    try {
+      const response = await fetch('http://localhost:5000/api/board', {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json', 'x-auth-token': token }
+      });
+      const boardData = await response.json();
+
+      if (response.ok) {
+        const board = document.getElementById('board');
+        if (!boardData.columns || boardData.columns.length === 0) {
+          const emptyMessage = document.createElement('div');
+          emptyMessage.classList.add('empty-board-message');
+          emptyMessage.innerHTML = `<p>No columns available. Click below to add a new column.</p>`;
+          board.appendChild(emptyMessage);
+          document.getElementById('add-column').style.display = 'inline-block';
+        } else {
+          boardData.columns.forEach((column) => {
+            const columnElement = document.createElement('div');
+            columnElement.classList.add('column');
+            columnElement.setAttribute('data-column-id', column._id);
+
+            // HUOM: poistettu draggable="true" SortableJS:n tieltä
+            columnElement.innerHTML = `
+              <h3>${column.name}</h3>
+              <div class="cards-container" id="column-${column._id}">
+                ${column.cards.map(card => `
+                  <div class="card" data-card-id="${card._id}">
+                    <p>${card.title || 'No title'}</p>
+                    <button class="bg-red-600 text-white py-1 px-2 mt-2 remove-card-btn" onclick="removeCard('${card._id}', '${column._id}')">Remove</button>
+                  </div>
+                `).join('')}
+              </div>
+              <button class="bg-green-500 text-white py-1 px-2 mt-4 add-card-btn" onclick="addCard('${column._id}')">Add Card</button>
+              <button class="bg-yellow-500 text-white py-1 px-2 mt-4 rename-column-btn" onclick="renameColumn('${column._id}')">Rename Column</button>
+              <button class="bg-red-500 text-white py-1 px-2 mt-4 remove-column-btn" onclick="removeColumn('${column._id}')">Remove Column</button>
+            `;
+            board.appendChild(columnElement);
+          });
+
+          // Alustetaan Drag & Drop vasta kun DOM on rakennettu
+          initDnD();
+        }
+      } else {
+        console.error('Failed to load board data', boardData.message);
+      }
+    } catch (error) {
+      console.error('Error fetching board data:', error);
+    }
+  });
+
+  // ---------- Add column & logout ----------
+  document.getElementById('add-column').addEventListener('click', function() {
+    const newColumnName = prompt('Enter new column name:');
+    if (newColumnName) addColumn(newColumnName);
+  });
+
+  async function addColumn(name) {
+    const token = localStorage.getItem('authToken');
+    if (!token) { window.location.href = 'login.html'; }
+    try {
+      const response = await fetch('http://localhost:5000/api/column', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-auth-token': token },
+        body: JSON.stringify({ name })
+      });
+      const data = await response.json();
+      if (response.ok) location.reload();
+      else console.error('Failed to add column:', data.message);
+    } catch (error) {
+      console.error('Error adding column:', error);
+    }
+  }
+
+  document.getElementById('logout').addEventListener('click', function() {
+    localStorage.removeItem('authToken');
+    window.location.href = 'login.html';
+  });
+  </script>
 </body>
 </html>

@@ -1,10 +1,18 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Kanban Board</title>
   <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- SortableJS: tarvitaan korttien drag & dropiin (toimii myös mobiilissa) -->
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js" defer></script>
+
+  <style>
+    /* Mahdollistaa pystyscrollin ja DnD:n toimimaan sulavasti kosketuksella */
+    .card-list { touch-action: pan-y; }
+  </style>
 </head>
 <body class="bg-gray-100">
   <div class="container mx-auto py-8">
