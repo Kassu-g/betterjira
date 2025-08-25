@@ -36,12 +36,13 @@
       padding: 10px;
       margin-bottom: 10px;
       box-shadow: 0 2px 4px rgba(13, 11, 11, 0.1);
-      cursor: grab; /* visuaalinen vihje vedosta */
+      cursor: grab;
     }
-    /* Sulava kosketusvieritys + DnD rinnakkain */
-    .cards-container { 
-      touch-action: pan-y; 
+    .cards-container {
+      touch-action: pan-y;
       overflow: auto;
+      min-height: 24px; /* helpompi pudottaa tyhjään sarakkeeseen */
+      padding-bottom: 2px;
     }
     .add-column-btn { margin-top: 30px; cursor: pointer; }
     .empty-board-message { text-align: center; margin-top: 50px; }
@@ -68,7 +69,7 @@
   </div>
 
   <script>
-  // ---------- Card & Column actions (sinun alkuperäiset funktiot) ----------
+  // ---------- Card & Column actions ----------
   async function addCard(columnId) {
     const token = localStorage.getItem('authToken');
     if (!token) { window.location.href = 'login.html'; }
@@ -89,7 +90,7 @@
     }
   }
 
-  async function removeCard(cardId, columnId) {
+  async function removeCard(cardId) {
     const token = localStorage.getItem('authToken');
     if (!token) { window.location.href = 'login.html'; }
     try {
@@ -137,10 +138,10 @@
       if (listEl.__sortableInited) return;
 
       new Sortable(listEl, {
-        group: 'cards',               // sallii siirrot sarakkeiden välillä
+        group: 'cards',
         animation: 150,
         draggable: '.card',
-        handle: '.card',              // koko kortti toimii kahvana
+        handle: '.card',
         ghostClass: 'opacity-50',
         dragClass: 'ring-2 ring-blue-400',
         fallbackOnBody: true,
@@ -148,15 +149,31 @@
 
         onEnd(evt) {
           const cardId = evt.item.dataset.cardId;
-          // Sarake-div on .cards-container, sen parent .column jossa data-column-id
-          const newColumnId = evt.to.parentElement.getAttribute('data-column-id');
-          const newIndex = evt.newIndex;
 
-          const newOrder = Array.from(evt.to.querySelectorAll('.card'))
+          const toList = evt.to;
+          const fromList = evt.from;
+
+          const newColumnId = toList.parentElement.getAttribute('data-column-id');
+          const oldColumnId = fromList.parentElement.getAttribute('data-column-id');
+
+          const newIndex = evt.newIndex;
+          const oldIndex = evt.oldIndex;
+
+          const newOrder = Array.from(toList.querySelectorAll('.card'))
             .map(el => el.dataset.cardId);
 
-          persistReorder({ cardId, newColumnId, newIndex, newOrder })
-            .catch(err => console.error('Persist reorder failed:', err));
+          const oldOrder = Array.from(fromList.querySelectorAll('.card'))
+            .map(el => el.dataset.cardId);
+
+          persistReorder({
+            cardId,
+            newColumnId,
+            oldColumnId,
+            newIndex,
+            oldIndex,
+            newOrder,
+            oldOrder
+          }).catch(err => console.error('Persist reorder failed:', err));
         }
       });
 
@@ -168,17 +185,12 @@
     const token = localStorage.getItem('authToken');
     if (!token) return;
 
-    // Toteuta tämä endpoint backendiin (Express/Mongoose bulkWrite on helppo):
-    // PUT /api/columns/:columnId/reorder  body: { cardId, newIndex, newOrder }
     const res = await fetch(`http://localhost:5000/api/columns/${payload.newColumnId}/reorder`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', 'x-auth-token': token },
       body: JSON.stringify(payload)
     });
-    if (!res.ok) {
-      const txt = await res.text();
-      throw new Error(`${res.status} ${txt}`);
-    }
+    if (!res.ok) throw new Error(await res.text());
   }
 
   // ---------- Board render ----------
@@ -207,14 +219,13 @@
             columnElement.classList.add('column');
             columnElement.setAttribute('data-column-id', column._id);
 
-            // HUOM: poistettu draggable="true" SortableJS:n tieltä
             columnElement.innerHTML = `
               <h3>${column.name}</h3>
               <div class="cards-container" id="column-${column._id}">
                 ${column.cards.map(card => `
                   <div class="card" data-card-id="${card._id}">
                     <p>${card.title || 'No title'}</p>
-                    <button class="bg-red-600 text-white py-1 px-2 mt-2 remove-card-btn" onclick="removeCard('${card._id}', '${column._id}')">Remove</button>
+                    <button class="bg-red-600 text-white py-1 px-2 mt-2 remove-card-btn" onclick="removeCard('${card._id}')">Remove</button>
                   </div>
                 `).join('')}
               </div>
@@ -225,7 +236,6 @@
             board.appendChild(columnElement);
           });
 
-          // Alustetaan Drag & Drop vasta kun DOM on rakennettu
           initDnD();
         }
       } else {

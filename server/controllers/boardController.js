@@ -157,10 +157,7 @@ exports.moveCard = async (req, res) => {
 
     const [movedId] = fromCol.cards.splice(fromIdx, 1);
 
-    const insertAt = Math.max(
-      0,
-      Math.min(typeof toIndex === 'number' ? toIndex : toCol.cards.length, toCol.cards.length)
-    );
+    const insertAt = Math.max(0, Math.min(typeof toIndex === 'number' ? toIndex : toCol.cards.length, toCol.cards.length));
     toCol.cards.splice(insertAt, 0, movedId);
 
     await board.save();
@@ -173,11 +170,11 @@ exports.moveCard = async (req, res) => {
   }
 };
 
-// SortableJS tallennus: korvaa koko sarakkeen korttijärjestyksen
+// SortableJS tallennus: päivitä sekä kohde- että lähdesarake yhdellä pyynnöllä
 exports.reorderColumnCards = async (req, res) => {
   try {
-    const { columnId } = req.params;
-    const { newOrder } = req.body; // array of cardId strings
+    const { columnId } = req.params; // = newColumnId
+    const { cardId, newOrder, oldColumnId, oldOrder } = req.body;
 
     if (!Array.isArray(newOrder)) {
       return res.status(400).json({ message: 'newOrder must be an array of card ids' });
@@ -186,16 +183,43 @@ exports.reorderColumnCards = async (req, res) => {
     const board = await Board.findOne({ userId: req.user._id }).exec();
     if (!board) return res.status(404).json({ message: 'Board not found' });
 
-    const col = board.columns.id(columnId);
-    if (!col) return res.status(404).json({ message: 'Column not found' });
+    const newCol = board.columns.id(columnId);
+    if (!newCol) return res.status(404).json({ message: 'Target column not found' });
 
-    col.cards = newOrder.map(id => new mongoose.Types.ObjectId(id));
+    // --- 1) Kohdesarakkeen järjestys suoraan newOrderista
+    newCol.cards = newOrder.map(id => new mongoose.Types.ObjectId(id));
+
+    // --- 2) Jos siirto oli sarakkeiden välillä, päivitä myös lähdesarake
+    if (oldColumnId && oldColumnId !== columnId) {
+      const oldCol = board.columns.id(oldColumnId);
+      if (oldCol) {
+        if (Array.isArray(oldOrder)) {
+          // Jos lähetit oldOrderin, käytetään sitä suoraan
+          oldCol.cards = oldOrder.map(id => new mongoose.Types.ObjectId(id));
+        } else if (cardId) {
+          // Fallback: poista varmuudeksi cardId lähdesarakkeesta
+          oldCol.cards = oldCol.cards.filter(id => id.toString() !== cardId);
+        }
+      }
+    } else {
+      // Sama sarake: mitään erityistä ei tarvita, newOrder jo riittää
+      // (varmistetaan silti, ettei duplikaatteja pääse syntymään)
+      const seen = new Set();
+      newCol.cards = newCol.cards.filter(id => {
+        const s = id.toString();
+        if (seen.has(s)) return false;
+        seen.add(s);
+        return true;
+      });
+    }
+
     await board.save();
 
     const updated = await Board.findById(board._id).populate('columns.cards').exec();
     return res.status(200).json({ columns: updated.columns });
   } catch (error) {
     console.error('reorderColumnCards error:', error);
-    res.status(500).json({ message: 'Server error' });
+    // Lähetetään virhesyötteet takaisin, että näet ne konsolissa
+    return res.status(500).json({ message: 'Server error', error: String(error && error.stack || error) });
   }
 };
